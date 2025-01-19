@@ -22,7 +22,7 @@ st.set_page_config(
 )
 
 # Title and description
-st.title("🌾 Agricultural Commodity Arrival Forecasting")
+st.title("🌾 Agricultural Commodity Price Forecasting")
 st.markdown("""
 This application predicts future agricultural commodity arrivals at various APMCs 
 (Agricultural Produce Market Committees) based on historical data and market trends.
@@ -363,9 +363,9 @@ def main():
     else:
         st.success("Model loaded successfully!")
         # Display metrics
-        st.sidebar.subheader("Model Performance Metrics")
-        for metric, value in metrics.items():
-            st.sidebar.metric(metric, f"{value:.2f}")
+        # st.sidebar.subheader("Model Performance Metrics")
+        # for metric, value in metrics.items():
+        #     st.sidebar.metric(metric, f"{value:.2f}")
     
     if st.sidebar.button("Train New Model"):
         model, metrics = train_model_with_progress()
