@@ -217,9 +217,6 @@ def train_and_evaluate_model(df):
         r2 = r2_score(y_test, y_pred)
         
         metrics = {
-            # 'RMSE': rmse,
-            # 'R2': r2,
-            # 'RMSE_percentage': (rmse / y_test.mean()) * 100,
             'Test_Set_Size': len(y_test),
             'Training_Set_Size': len(y_train)
         }
@@ -353,7 +350,7 @@ def train_model_with_progress():
 
 def main():
     # Sidebar
-    st.sidebar.header("Model Training")
+    # st.sidebar.header("Model Training")
     
     # Check if model exists
     model, metrics = load_model()
