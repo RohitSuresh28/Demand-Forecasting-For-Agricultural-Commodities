@@ -212,9 +212,9 @@ def train_and_evaluate_model(df):
         y_pred = model.predict(X_test)
         
         # Calculate metrics
-        mse = mean_squared_error(y_test, y_pred)
-        rmse = np.sqrt(mse)
-        r2 = r2_score(y_test, y_pred)
+        # mse = mean_squared_error(y_test, y_pred)
+        # rmse = np.sqrt(mse)
+        # r2 = r2_score(y_test, y_pred)
         
         metrics = {
             'Test_Set_Size': len(y_test),
