@@ -217,9 +217,9 @@ def train_and_evaluate_model(df):
         r2 = r2_score(y_test, y_pred)
         
         metrics = {
-            'RMSE': rmse,
-            'R2': r2,
-            'RMSE_percentage': (rmse / y_test.mean()) * 100,
+            # 'RMSE': rmse,
+            # 'R2': r2,
+            # 'RMSE_percentage': (rmse / y_test.mean()) * 100,
             'Test_Set_Size': len(y_test),
             'Training_Set_Size': len(y_train)
         }
@@ -363,12 +363,12 @@ def main():
     else:
         st.success("Model loaded successfully!")
         # Display metrics
-        # st.sidebar.subheader("Model Performance Metrics")
-        # for metric, value in metrics.items():
-        #     st.sidebar.metric(metric, f"{value:.2f}")
+        st.sidebar.subheader("Model Performance Metrics")
+        for metric, value in metrics.items():
+            st.sidebar.metric(metric, f"{value:.2f}")
     
-    if st.sidebar.button("Train New Model"):
-        model, metrics = train_model_with_progress()
+    # if st.sidebar.button("Train New Model"):
+    #     model, metrics = train_model_with_progress()
     
     # Load data
     df = load_data()
@@ -420,12 +420,12 @@ def main():
                     fig = px.line(
                         predictions,
                         x='Date',
-                        y='Predicted_Arrivals',
+                        y='Predicted_Arrivals(in Quintals)',
                         title=f'Predicted Arrivals for {selected_commodity} at {selected_apmc}'
                     )
                     fig.update_layout(
                         xaxis_title="Date",
-                        yaxis_title="Predicted Arrivals (Quintals)"
+                        yaxis_title="Predicted Price"
                     )
                     st.plotly_chart(fig, use_container_width=True)
                 
