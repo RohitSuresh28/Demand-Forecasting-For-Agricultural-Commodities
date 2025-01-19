@@ -417,7 +417,7 @@ def main():
                     fig = px.line(
                         predictions,
                         x='Date',
-                        y='Predicted_Arrivals(in Quintals)',
+                        y='Predicted_Arrivals',
                         title=f'Predicted Arrivals for {selected_commodity} at {selected_apmc}'
                     )
                     fig.update_layout(
