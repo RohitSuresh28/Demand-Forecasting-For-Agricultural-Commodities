@@ -369,7 +369,7 @@ def main():
     arrival_model, price_models = load_models()
     df = load_data()
     
-    if df is not None and arrival_model is not None and price_models is not None:
+    if df is not None and arrival_model is not None :#and price_models is not None
         # Display basic statistics
         st.subheader("Dataset Overview")
         col1, col2, col3 = st.columns(3)
