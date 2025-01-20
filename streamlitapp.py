@@ -16,8 +16,7 @@ import plotly.graph_objects as go
 
 # Set page config
 st.set_page_config(
-    page_title="Agricultural Commodity Forecasting",
-    page_icon="🌾",
+    
     layout="wide"
 )
 warnings.filterwarnings('ignore')
