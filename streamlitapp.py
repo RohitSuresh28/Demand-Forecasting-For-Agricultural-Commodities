@@ -293,6 +293,7 @@ def predict_future(model, df, commodity, apmc, months=3):
         result = pd.DataFrame({
             'Date': future_dates,
             'Predicted_Arrivals': predictions
+            'Predicted_Prices': predicted_prices
         })
 
         return result
@@ -349,105 +350,114 @@ def train_model_with_progress():
         return model, metrics
 
 def main():
-    # Sidebar
-    # st.sidebar.header("Model Training")
+    st.title("🌾 Agricultural Commodity Forecasting")
+    st.write("Predict commodity arrivals and prices for Indian agricultural markets")
     
-    # Check if model exists
-    model, metrics = load_model()
-    
-    if model is None:
-        st.warning("No trained model found. Please train the model first.")
+    # Load data directly
+    with st.spinner('Loading data...'):
+        df = load_data()
+        
+    if df is not None:
+        # Process data
+        with st.spinner('Processing data...'):
+            prepared_df = prepare_data(df)
+            
+            # Display basic statistics
+            st.subheader("Dataset Overview")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Records", len(df))
+            with col2:
+                st.metric("Unique Commodities", df['Commodity'].nunique())
+            with col3:
+                st.metric("Unique APMCs", df['APMC'].nunique())
+            
+            # Show data summary
+            st.subheader("Data Summary")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.write("Sample of Available Commodities:")
+                st.write(sorted(df['Commodity'].unique())[:10])
+            
+            with col2:
+                st.write("Sample of Available APMCs:")
+                st.write(sorted(df['APMC'].unique())[:10])
+            
+            # User inputs for prediction
+            st.subheader("Make Predictions")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                commodity = st.selectbox("Select Commodity", sorted(df['Commodity'].unique()))
+            with col2:
+                # Filter APMCs based on selected commodity
+                available_apmcs = sorted(df[df['Commodity'] == commodity]['APMC'].unique())
+                apmc = st.selectbox("Select APMC", available_apmcs)
+            with col3:
+                months = st.slider("Forecast Months", 1, 12, 3)
+            
+            if st.button("Generate Forecast"):
+                with st.spinner('Training model and generating forecast...'):
+                    # Train model
+                    model = create_forecast_model()
+                    X = prepared_df.drop(['arrivals_in_qtl', 'date'], axis=1)
+                    y = prepared_df['arrivals_in_qtl']
+                    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+                    model.fit(X_train, y_train)
+                    
+                    # Make predictions
+                    predictions = predict_future(model, df, commodity, apmc, months)
+                    
+                    if predictions is not None:
+                        st.subheader("Forecast Results")
+                        
+                        # Display predictions table
+                        st.write("Predicted Arrivals and Prices by Month:")
+                        st.dataframe(predictions)
+                        
+                        # Create visualizations with tabs
+                        tab1, tab2 = st.tabs(["Arrivals Forecast", "Price Forecast"])
+                        
+                        with tab1:
+                            fig1 = go.Figure()
+                            fig1.add_trace(go.Scatter(
+                                x=predictions['Date'],
+                                y=predictions['Predicted_Arrivals'],
+                                name='Predicted Arrivals',
+                                line=dict(color='blue')
+                            ))
+                            fig1.update_layout(
+                                title=f'Forecasted Arrivals for {commodity} at {apmc}',
+                                xaxis_title='Date',
+                                yaxis_title='Arrivals (qtl)'
+                            )
+                            st.plotly_chart(fig1, use_container_width=True)
+
+                        with tab2:
+                            fig2 = go.Figure()
+                            fig2.add_trace(go.Scatter(
+                                x=predictions['Date'],
+                                y=predictions['Predicted_Prices'],
+                                name='Predicted Prices',
+                                line=dict(color='green')
+                            ))
+                            fig2.update_layout(
+                                title=f'Forecasted Prices for {commodity} at {apmc}',
+                                xaxis_title='Date',
+                                yaxis_title='Price (₹)'
+                            )
+                            st.plotly_chart(fig2, use_container_width=True)
+                        
+                        # Download predictions
+                        csv = predictions.to_csv(index=False)
+                        st.download_button(
+                            label="Download Forecast CSV",
+                            data=csv,
+                            file_name=f'forecast_{commodity}_{apmc}.csv',
+                            mime='text/csv'
+                        )
     else:
-        st.success("Model loaded successfully!")
-        # Display metrics
-        # st.sidebar.subheader("Model Performance Metrics")
-        # for metric, value in metrics.items():
-        #     st.sidebar.metric(metric, f"{value:.2f}")
-    
-    # if st.sidebar.button("Train New Model"):
-    #     model, metrics = train_model_with_progress()
-    
-    # Load data
-    df = load_data()
-    if df is None or model is None:
-        st.warning("Please ensure both data and model are available.")
-        return
-    
-    # Get unique values for dropdowns
-    commodities = sorted(df['Commodity'].unique())
-    
-    # User inputs
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        selected_commodity = st.selectbox("Select Commodity", commodities)
-    
-    with col2:
-        apmcs = sorted(df[df['Commodity'] == selected_commodity]['APMC'].unique())
-        selected_apmc = st.selectbox("Select APMC", apmcs)
-    
-    with col3:
-        months = st.slider("Number of months to predict", 1, 12, 3)
-    
-    # Make prediction when user clicks
-    if st.button("Generate Forecast"):
-        with st.spinner("Generating forecast..."):
-            try:
-                predictions = predict_future(
-                    model,
-                    df,
-                    selected_commodity,
-                    selected_apmc,
-                    months
-                )
-                
-                # Display predictions
-                st.subheader("Forecast Results")
-                
-                # Create two columns for table and chart
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.dataframe(predictions.style.format({
-                        'Predicted_Arrivals': '{:,.2f}'
-                    }))
-                
-                with col2:
-                    # Create line chart
-                    fig = px.line(
-                        predictions,
-                        x='Date',
-                        y='Predicted_Arrivals',
-                        title=f'Predicted Arrivals for {selected_commodity} at {selected_apmc}'
-                    )
-                    fig.update_layout(
-                        xaxis_title="Date",
-                        yaxis_title="Predicted Price"
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-                
-                # Historical data visualization
-                st.subheader("Historical Data")
-                historical_data = df[
-                    (df['Commodity'] == selected_commodity) & 
-                    (df['APMC'] == selected_apmc)
-                ].copy()
-                historical_data['date'] = pd.to_datetime(historical_data['date'])
-                
-                hist_fig = px.line(
-                    historical_data,
-                    x='date',
-                    y='arrivals_in_qtl',
-                    title=f'Historical Arrivals for {selected_commodity} at {selected_apmc}'
-                )
-                hist_fig.update_layout(
-                    xaxis_title="Date",
-                    yaxis_title="Actual Arrivals (Quintals)"
-                )
-                st.plotly_chart(hist_fig, use_container_width=True)
-                
-            except Exception as e:
-                st.error(f"Error generating forecast: {str(e)}")
+        st.error("Unable to load the dataset. Please check if the data file exists and is accessible.")
 
 if __name__ == "__main__":
     main()
