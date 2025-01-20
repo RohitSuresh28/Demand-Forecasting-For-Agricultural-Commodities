@@ -244,26 +244,31 @@ def train_and_evaluate_model(df):
         raise
 
 
-def predict_future(model, df, commodity, apmc, months=3):
-    """Predict future values for a given commodity and APMC."""
+def predict_future(arrival_model, price_models, df, commodity, apmc, months=3):
     try:
-        # Prepare the base data for predictions
         df_commodity = df[(df['Commodity'] == commodity) & (df['APMC'] == apmc)].copy()
-
+        
         if df_commodity.empty:
             raise ValueError(f"No data found for commodity '{commodity}' in APMC '{apmc}'.")
-
-        # Sort by date
+        
+        # Prepare data for predictions
         df_commodity['date'] = pd.to_datetime(df_commodity['date'])
         df_commodity = df_commodity.sort_values('date')
-
-        # Extract the latest data point
         latest_data = df_commodity.iloc[-1]
-
-        # Generate future dates
+        
         future_dates = [latest_data['date'] + timedelta(days=30 * i) for i in range(1, months + 1)]
-
-        # Create a DataFrame for future predictions
+        
+        # Price predictions using pre-trained Prophet model
+        price_model_key = f"{commodity}_{apmc}"
+        if price_model_key in price_models:
+            future_price_df = pd.DataFrame({'ds': future_dates})
+            price_forecast = price_models[price_model_key].predict(future_price_df)
+            predicted_prices = price_forecast['yhat'].values
+        else:
+            st.warning(f"No price model available for {commodity} at {apmc}. Using last known price.")
+            predicted_prices = [latest_data['modal_price']] * months
+        
+        # Prepare data for arrival predictions
         future_df = pd.DataFrame({
             'date': future_dates,
             'APMC': apmc,
@@ -277,42 +282,33 @@ def predict_future(model, df, commodity, apmc, months=3):
             'year': [d.year for d in future_dates],
             'month_num': [d.month for d in future_dates]
         })
-
-        # Add seasonal and market features to the future data
+        
+        # Add all required features
         future_df = calculate_base_features(future_df)
         future_df = add_seasonal_features(future_df)
         future_df = add_market_features(future_df)
-
-        # Add lag features using the latest available data
+        
         for lag in [1, 2, 3]:
             future_df[f'arrivals_lag_{lag}'] = latest_data.get(f'arrivals_lag_{lag}', 0)
             future_df[f'price_lag_{lag}'] = latest_data.get(f'price_lag_{lag}', 0)
-
-        # Drop unnecessary columns
+        
         future_df = future_df.drop(['date', 'arrivals_in_qtl'], axis=1, errors='ignore')
-
-        # Ensure all expected columns exist in the prediction DataFrame
-        model_columns = model.named_steps['preprocessor'].transformers_[0][2] + \
-                        list(model.named_steps['preprocessor'].transformers_[1][2])
-        for col in model_columns:
-            if col not in future_df:
-                future_df[col] = 0
-
-        # Make predictions
-        predictions = model.predict(future_df)
-
-        # Return a DataFrame with predictions
+        
+        # Make arrival predictions
+        predicted_arrivals = arrival_model.predict(future_df)
+        
+        # Combine predictions
         result = pd.DataFrame({
             'Date': future_dates,
-            'Predicted_Arrivals': predictions
+            'Predicted_Arrivals': predicted_arrivals,
             'Predicted_Prices': predicted_prices
         })
-
+        
         return result
-
+    
     except Exception as e:
-        print(f"Error during prediction: {str(e)}")
-        raise
+        st.error(f"Error during prediction: {str(e)}")
+        return None
 # [Previous imports and functions remain the same until train_model_with_progress]
 
 def save_model(model, metrics):
