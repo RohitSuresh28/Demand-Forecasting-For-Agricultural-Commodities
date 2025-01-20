@@ -14,6 +14,12 @@ import pickle
 from prophet import Prophet
 import plotly.graph_objects as go
 
+# Set page config
+st.set_page_config(
+    page_title="Agricultural Commodity Forecasting",
+    page_icon="🌾",
+    layout="wide"
+)
 warnings.filterwarnings('ignore')
 st.markdown("""
     <style>
@@ -28,12 +34,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Set page config
-st.set_page_config(
-    page_title="Agricultural Commodity Forecasting",
-    page_icon="🌾",
-    layout="wide"
-)
+
 
 # Title and description
 st.title("🌾 Agricultural Commodity Price Forecasting")
