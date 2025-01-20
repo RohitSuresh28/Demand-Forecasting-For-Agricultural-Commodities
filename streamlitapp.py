@@ -36,7 +36,7 @@ st.markdown("""
 
 
 # Title and description
-st.title("🌾 Agricultural Commodity Price Forecasting")
+# st.title("🌾 Agricultural Commodity Price Forecasting")
 st.markdown("""
 This application predicts future agricultural commodity arrivals at various APMCs 
 (Agricultural Produce Market Committees) based on historical data and market trends.
