@@ -328,7 +328,7 @@ def load_models():
     try:
         with open('arrival_model.pkl', 'rb') as f:
             arrival_model = pickle.load(f)
-        with open('price_models.pkl', 'rb') as f:
+        with open('arrival_model.pkl', 'rb') as f:
             price_models = pickle.load(f)
         return arrival_model, price_models
     except Exception as e:
