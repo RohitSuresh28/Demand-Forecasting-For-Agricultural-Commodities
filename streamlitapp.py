@@ -13,6 +13,18 @@ import warnings
 import pickle
 
 warnings.filterwarnings('ignore')
+st.markdown("""
+    <style>
+        .main { padding: 2rem }
+        .stButton>button { width: 100%; }
+        .metric-card {
+            background-color: #f0f2f6;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 0.5rem 0;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 # Set page config
 st.set_page_config(
@@ -313,16 +325,18 @@ def save_model(model, metrics):
     with open('trained_model.pkl', 'wb') as f:
         pickle.dump(model_data, f)
 
-def load_model():
-    """Load the trained model and metrics"""
+def load_models():
+    """Load the pickled models"""
     try:
-        # Updated path to load directly from root
-        with open('trained_model.pkl', 'rb') as f:
-            model_data = pickle.load(f)
-        return model_data['model'], model_data['metrics']
+        with open('arrival_model.pkl', 'rb') as f:
+            arrival_model = pickle.load(f)
+        with open('price_models.pkl', 'rb') as f:
+            price_models = pickle.load(f)
+        return arrival_model, price_models
     except Exception as e:
-        st.error(f"Error loading model: {str(e)}")
+        st.error(f"Error loading models: {str(e)}")
         return None, None
+
 
 def train_model_with_progress():
     """Train model with progress bar"""
@@ -353,111 +367,86 @@ def main():
     st.title("🌾 Agricultural Commodity Forecasting")
     st.write("Predict commodity arrivals and prices for Indian agricultural markets")
     
-    # Load data directly
-    with st.spinner('Loading data...'):
-        df = load_data()
+    # Load models and data
+    arrival_model, price_models = load_models()
+    df = load_data()
+    
+    if df is not None and arrival_model is not None and price_models is not None:
+        # Display basic statistics
+        st.subheader("Dataset Overview")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Records", len(df))
+        with col2:
+            st.metric("Unique Commodities", df['Commodity'].nunique())
+        with col3:
+            st.metric("Unique APMCs", df['APMC'].nunique())
         
-    if df is not None:
-        # Process data
-        with st.spinner('Processing data...'):
-            prepared_df = prepare_data(df)
-            
-            # Display basic statistics
-            st.subheader("Dataset Overview")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Total Records", len(df))
-            with col2:
-                st.metric("Unique Commodities", df['Commodity'].nunique())
-            with col3:
-                st.metric("Unique APMCs", df['APMC'].nunique())
-            
-            # Show data summary
-            st.subheader("Data Summary")
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.write("Sample of Available Commodities:")
-                st.write(sorted(df['Commodity'].unique())[:10])
-            
-            with col2:
-                st.write("Sample of Available APMCs:")
-                st.write(sorted(df['APMC'].unique())[:10])
-            
-            # User inputs for prediction
-            st.subheader("Make Predictions")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                commodity = st.selectbox("Select Commodity", sorted(df['Commodity'].unique()))
-            with col2:
-                # Filter APMCs based on selected commodity
-                available_apmcs = sorted(df[df['Commodity'] == commodity]['APMC'].unique())
-                apmc = st.selectbox("Select APMC", available_apmcs)
-            with col3:
-                months = st.slider("Forecast Months", 1, 12, 3)
-            
-            if st.button("Generate Forecast"):
-                with st.spinner('Training model and generating forecast...'):
-                    # Train model
-                    model = create_forecast_model()
-                    X = prepared_df.drop(['arrivals_in_qtl', 'date'], axis=1)
-                    y = prepared_df['arrivals_in_qtl']
-                    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-                    model.fit(X_train, y_train)
+        # User inputs for prediction
+        st.subheader("Make Predictions")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            commodity = st.selectbox("Select Commodity", sorted(df['Commodity'].unique()))
+        with col2:
+            available_apmcs = sorted(df[df['Commodity'] == commodity]['APMC'].unique())
+            apmc = st.selectbox("Select APMC", available_apmcs)
+        with col3:
+            months = st.slider("Forecast Months", 1, 12, 3)
+        
+        if st.button("Generate Forecast"):
+            with st.spinner('Generating forecast...'):
+                predictions = predict_future(arrival_model, price_models, df, commodity, apmc, months)
+                
+                if predictions is not None:
+                    st.subheader("Forecast Results")
                     
-                    # Make predictions
-                    predictions = predict_future(model, df, commodity, apmc, months)
+                    # Display predictions table
+                    st.write("Predicted Arrivals and Prices by Month:")
+                    st.dataframe(predictions)
                     
-                    if predictions is not None:
-                        st.subheader("Forecast Results")
-                        
-                        # Display predictions table
-                        st.write("Predicted Arrivals and Prices by Month:")
-                        st.dataframe(predictions)
-                        
-                        # Create visualizations with tabs
-                        tab1, tab2 = st.tabs(["Arrivals Forecast", "Price Forecast"])
-                        
-                        with tab1:
-                            fig1 = go.Figure()
-                            fig1.add_trace(go.Scatter(
-                                x=predictions['Date'],
-                                y=predictions['Predicted_Arrivals'],
-                                name='Predicted Arrivals',
-                                line=dict(color='blue')
-                            ))
-                            fig1.update_layout(
-                                title=f'Forecasted Arrivals for {commodity} at {apmc}',
-                                xaxis_title='Date',
-                                yaxis_title='Arrivals (qtl)'
-                            )
-                            st.plotly_chart(fig1, use_container_width=True)
-
-                        with tab2:
-                            fig2 = go.Figure()
-                            fig2.add_trace(go.Scatter(
-                                x=predictions['Date'],
-                                y=predictions['Predicted_Prices'],
-                                name='Predicted Prices',
-                                line=dict(color='green')
-                            ))
-                            fig2.update_layout(
-                                title=f'Forecasted Prices for {commodity} at {apmc}',
-                                xaxis_title='Date',
-                                yaxis_title='Price (₹)'
-                            )
-                            st.plotly_chart(fig2, use_container_width=True)
-                        
-                        # Download predictions
-                        csv = predictions.to_csv(index=False)
-                        st.download_button(
-                            label="Download Forecast CSV",
-                            data=csv,
-                            file_name=f'forecast_{commodity}_{apmc}.csv',
-                            mime='text/csv'
+                    # Create visualizations with tabs
+                    tab1, tab2 = st.tabs(["Arrivals Forecast", "Price Forecast"])
+                    
+                    with tab1:
+                        fig1 = go.Figure()
+                        fig1.add_trace(go.Scatter(
+                            x=predictions['Date'],
+                            y=predictions['Predicted_Arrivals'],
+                            name='Predicted Arrivals',
+                            line=dict(color='blue')
+                        ))
+                        fig1.update_layout(
+                            title=f'Forecasted Arrivals for {commodity} at {apmc}',
+                            xaxis_title='Date',
+                            yaxis_title='Arrivals (qtl)'
                         )
+                        st.plotly_chart(fig1, use_container_width=True)
+
+                    with tab2:
+                        fig2 = go.Figure()
+                        fig2.add_trace(go.Scatter(
+                            x=predictions['Date'],
+                            y=predictions['Predicted_Prices'],
+                            name='Predicted Prices',
+                            line=dict(color='green')
+                        ))
+                        fig2.update_layout(
+                            title=f'Forecasted Prices for {commodity} at {apmc}',
+                            xaxis_title='Date',
+                            yaxis_title='Price (₹)'
+                        )
+                        st.plotly_chart(fig2, use_container_width=True)
+                    
+                    # Download predictions
+                    csv = predictions.to_csv(index=False)
+                    st.download_button(
+                        label="Download Forecast CSV",
+                        data=csv,
+                        file_name=f'forecast_{commodity}_{apmc}.csv',
+                        mime='text/csv'
+                    )
     else:
-        st.error("Unable to load the dataset. Please check if the data file exists and is accessible.")
+        st.error("Unable to load models or data. Please check if all required files exist and are accessible.")
 
 if __name__ == "__main__":
     main()
