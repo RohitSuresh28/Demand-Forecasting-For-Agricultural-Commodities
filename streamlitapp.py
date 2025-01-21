@@ -443,8 +443,8 @@ def main():
                         file_name=f'forecast_{commodity}_{apmc}.csv',
                         mime='text/csv'
                     )
-    else:
-        st.error("Unable to load models or data. Please check if all required files exist and are accessible.")
+    # else:
+    #     st.error("Unable to load models or data. Please check if all required files exist and are accessible.")
 
 if __name__ == "__main__":
     main()
