@@ -334,7 +334,7 @@ def predict_future(model, df, commodity, apmc, months=3):
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_csv('/Users/rohitsuresh/Downloads/Monthly_data_cmo.csv')
+        df = pd.read_csv('Monthly_data_cmo.csv')
         df['date'] = pd.to_datetime(df['date'])
         return df
     except Exception as e:
